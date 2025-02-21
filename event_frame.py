@@ -88,18 +88,24 @@ class EventFrame(tk.Frame):
     def update_dday(self):
         """D-Day 업데이트"""
         now = datetime.now()
-        diff = self.target_date - now
-        days = diff.days
         
-        if diff.total_seconds() < 0:
+        # 날짜 부분만 비교하여 남은 일수를 계산
+        days = (self.target_date.date() - now.date()).days
+
+        if days < 0:
             dday_str = f"D + {-days}"
+            
+        elif days == 0:
+            dday_str = "D-Day"
             
         else:
             dday_str = f"D - {days}"
-            
-        self.canvas.itemconfig(self.dday_text_id, text=dday_str)
-        self.remaining_seconds = diff.total_seconds()
 
+        self.canvas.itemconfig(self.dday_text_id, text=dday_str)
+        self.remaining_seconds = (self.target_date - now).total_seconds()
+
+
+        
     def modify(self, event):
         """더블 클릭으로 제목/날짜 수정"""
         new_title = simpledialog.askstring("제목 수정", "새로운 제목:", initialvalue=self.title)
