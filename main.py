@@ -4,29 +4,45 @@ from datetime import datetime
 from pathlib import Path
 from event_frame import EventFrame
 
-# --- 자동 실행 등록 (Windows 레지스트리) ---
 def add_to_startup():
     """
     컴퓨터 부팅 시 자동으로 실행되도록 레지스트리에 등록.
     콘솔창이 뜨지 않도록 pythonw.exe 사용.
+    이미 등록되어 있으면 등록 과정을 스킵합니다.
     """
     try:
         script_path = os.path.abspath(sys.argv[0])
-        # 만약 sys.executable이 "python.exe"라면 "pythonw.exe"로 변경
         executable = sys.executable
-        
+        # 만약 sys.executable이 "python.exe"라면 "pythonw.exe"로 변경
         if "python.exe" in executable.lower():
             executable = executable.replace("python.exe", "pythonw.exe")
 
+        command = f'"{executable}" "{script_path}"'
         reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         key_name = "MyTkinterApp"
-        
+
+        # 먼저 읽기 권한으로 키를 열어 등록 여부 확인
+        try:
+            reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_READ)
+            try:
+                current_value, _ = winreg.QueryValueEx(reg_key, key_name)
+                if current_value == command:
+                    print("이미 등록되어 있습니다.")
+                    winreg.CloseKey(reg_key)
+                    return
+            except FileNotFoundError:
+                # 등록된 값이 없으면 FileNotFoundError가 발생하므로 무시
+                pass
+            winreg.CloseKey(reg_key)
+        except Exception as e:
+            # 읽기 권한으로 열 때 문제가 발생하면 그대로 진행
+            print("등록 확인 중 문제 발생:", e)
+
+        # 등록되어 있지 않으므로 쓰기 권한으로 키를 열어 값을 설정
         reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_SET_VALUE)
-        command = f'"{executable}" "{script_path}"'
-        
         winreg.SetValueEx(reg_key, key_name, 0, winreg.REG_SZ, command)
         winreg.CloseKey(reg_key)
-        
+
         print("자동 실행 등록 성공!")
         
     except Exception as e:
@@ -154,6 +170,8 @@ root.attributes("-transparentcolor", "gray")
 
 container_frame = tk.Frame(root, bg="gray")
 container_frame.pack(padx=10, pady=10, anchor="center")
+
+add_to_startup()
 
 # JSON 파일 로드
 event_data = load_events()
